@@ -1,0 +1,57 @@
+#App注册,已完成，2018.5.24
+import pymssql
+import re
+import requests
+import json
+
+#这里是注册的手机号不能重复
+mm='15120028735'
+
+#发送验证码
+sentdata={
+    'mobile':mm,
+    'op':'vcode'
+}
+senturl='http://10.70.14.14:6789/LogIn/RegistService.ashx'
+sentheaders={'iswap':"1",
+    "Content-Type": "application/x-www-form-urlencoded",
+             }
+r=requests.post(url=senturl,data=sentdata,headers=sentheaders).json()
+print(r)
+
+
+#查询验证码
+conn=pymssql.connect("10.70.14.202","xin","48sdf37EB7","TranstarAuction2011_120db")
+cursor=conn.cursor()
+#查询操作
+cursor.execute('SELECT * FROM SMSMsgDown WHERE MobilePhone=%d order  by 1 desc',mm)
+row=cursor.fetchone()
+print("ma=%s" % (row[5]))
+s=row[5]
+pat="[0-9]+"
+m=re.search(pat,s)
+print(m)
+print(m.group())
+vcode=m.group()
+conn.close()
+print(vcode)
+
+#注册，dumps把dict转化成str格式
+a={
+  "cityid" : "201",
+  "mobile" : mm,
+  "rcode" : "",
+  "source" : "ios",
+  "realname" : "测试666",
+  "vcode" : vcode,
+  "pwd" : "666666"
+}
+b=json.dumps(a)
+print(b)
+zhucedata={
+   'json':b,
+   'op':'regist'
+
+}
+rr=requests.post(url=senturl,data=zhucedata,headers=sentheaders).json()
+print(rr)
