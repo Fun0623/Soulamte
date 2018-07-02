@@ -1,0 +1,1507 @@
+import requests
+import json
+import pymysql
+
+header = {
+    'userid': "",
+    'token': ""
+}
+
+
+class chake():
+    def __init__(self, name="", password=""):
+        self.url_login = "http://192.168.200.84:8035/api/chake/login"
+        self.url_unchecklist = "http://192.168.200.84:8035/api/chake/unchecklist"
+        self.url_orderinfo = "http://192.168.200.84:8035/api/chake/orderinfo"
+        self.url_task = "http://192.168.200.84:8035/api/chake/task"
+        self.url_updatereport = "http://192.168.200.84:8035/api/chake/updatereport"
+        self.url_deliver = "http://deliver.test.youxinpai.com/api/wf_user/login/"
+        self.url_getcw = ("http://deliver.test.youxinpai.com/api/market_car_inout/get_car_allot_info")
+        self.url_confirmreport = "http://192.168.200.84:8035/api/chake/confirmreport"
+
+        # 通用信息
+        self.device = '866607020631409'
+        self.name = 'ff002'  # 修改用户和密码在这里改，如果不改就不动
+        self.passoword = '666666'
+        self.vin = 'ZD035F'  # 只需要改这里就行
+
+    # 登录
+    def login(self):
+        data_login = {
+            'device': self.device,
+            'name': self.name,
+            'password': self.passoword
+        }
+        getlogin = requests.post(url=self.url_login, data=data_login).json()
+        # print(getlogin)
+        # print("tvuid=%d" % getlogin["data"]["tvuid"])
+        # print("token=%s" % getlogin["data"]["token"])
+        self.userid = getlogin["data"]["tvuid"]
+        self.token = getlogin["data"]["token"]
+        header["userid"] = str(self.userid)
+        header["token"] = self.token
+        print("%s登录成功" % getlogin["data"]["username"])
+
+    # 待检测列表-vin搜索车辆
+    def unchecklist_search(self):
+        data = {
+            'vin': self.vin,
+            'tester_id': self.userid
+        }
+        getvin = requests.post(url=self.url_unchecklist, data=data, headers=header).json()
+        self.xcarid = getvin["data"][0]["xcarid"]
+        print("待检测列表-vin搜索车辆xcarid=%s" % getvin["data"][0]["xcarid"])
+
+    # 搜索后，点击【检测报告】——检测列表
+    def orderinfo(self):
+        data = {
+            'device': self.device,
+            'xcarid': self.xcarid,
+            'tvuid': self.userid
+        }
+        getorderinfo = requests.post(url=self.url_orderinfo, data=data, headers=header).json()
+        # print(orderinfo)
+        # print("car_id=%d" % getorderinfo["data"]["car_id"])
+        self.car_id = getorderinfo["data"]["car_id"]
+        self.tvaid = getorderinfo["data"]["tvaid"]
+        print("搜索后，点击【检测报告】，到检测列表 tvaid=%s" % getorderinfo["data"]["tvaid"])
+
+    # 刷新列表
+    def refresh_orderinfo(self):
+        data = {
+            'deviceid': self.device,
+            'xcarid': self.xcarid,
+            'tvuid': self.userid
+        }
+        getrefreshorderinfo = requests.post(url=self.url_orderinfo, data=data, headers=header).json()
+        # print(getrefreshorderinfo)
+        self.carfullname = getrefreshorderinfo["data"]["carfullname"]
+        self.licensecar = getrefreshorderinfo["data"]["licensecar"]
+        print("刷新列表，车牌号=%s" % getrefreshorderinfo["data"]["licensecar"])
+        self.manager_name = getrefreshorderinfo["data"]["manager_name"]
+        self.weituoid = getrefreshorderinfo["data"]["weituoid"]
+        self.price_user = getrefreshorderinfo["data"]["price_user"]
+        self.price_user_moblie = getrefreshorderinfo["data"]["price_user_moblie"]
+        self.uniqueid = getrefreshorderinfo["data"]["xcp_uuid"]
+        self.uniqueserial = getrefreshorderinfo["data"]["xcp_uucode"]
+        self.unique_name = getrefreshorderinfo["data"]["unique_name"]
+
+    # 获取变形金刚pc的token
+    def getdeliver_token(self):
+        data = {
+            "username": 'fangfang',
+            "password": 'ff@12570asdfghjkl',
+            "from": 2
+        }
+        dtoken = requests.post(url=self.url_deliver, data=data).json()
+        print("变形金刚PC的token %s" % dtoken["data"]["token"])
+        self.deliver_token = dtoken["data"]["token"]
+
+    def getcw(self):
+        db = pymysql.connect(host='172.18.98.12', port=3306, user='db1', passwd='123123', db='yxp_cp')
+        cursor = db.cursor()
+        cursor.execute("SELECT parkingnumber,market_id FROM xcp_order2car WHERE xcar_vin=%s", self.vin)
+        data = cursor.fetchone()
+        self.parking_no = data[0]
+        self.market_id = data[1]
+        # print(self.parking_no)
+        if (self.parking_no != ""):
+            self.parking_no = data[0]
+            print("数据库已经存在库位号%s" % self.parking_no)
+        else:
+            header1 = {'content-type': "application/json"}
+            data = {
+                "market_id": self.market_id,
+                "car_no": self.licensecar,
+                "PHPSESSID": self.deliver_token
+            }
+            getchewei = requests.post(url=self.url_getcw, json=data, headers=header1)
+            x = getchewei.text
+            y = json.loads(x)
+            print(y)
+            print(y["data"]["parking_no"])
+            self.parking_no = y["data"]["parking_no"]
+            print("数据库没有，从变形金刚pc获取的库位号是%s" % self.parking_no)
+
+        db.close()
+
+    # 证件拍照上传 1
+    def zjpz_updatereport(self):
+        data = {
+            "isrecheck": 0,
+            "type": 1,
+            "order_id": 0,
+            "is_big": 0,
+            "carid": self.car_id,
+            "order_car_id": self.xcarid,
+            "tvaid": self.tvaid,
+            "tvuid": self.userid,
+            "isuseoldreport": 0,
+            "oldcarid": 0,
+            "moduleid": "1",
+            "paperpiclist": [{
+                "CarId": self.car_id,
+                "FileId": 0,
+                "FileName": "\/p5\/20180629\/1649\/5b35f296cc6f1581501.jpg",
+                "FileType": 42,
+                "UserId": self.userid,
+                "V1": "",
+                "V10": "",
+                "V2": "",
+                "V3": "",
+                "V4": "",
+                "V5": "",
+                "V6": "",
+                "V7": "",
+                "V8": "",
+                "V9": "",
+                "id": 0,
+                "information_id": 22,
+                "originalfilename": "\/p5\/20180629\/1649\/5b35f2975a867823321.jpg",
+                "pic_id": "pic_42"
+            }, {
+                "CarId": self.car_id,
+                "FileId": 0,
+                "FileName": "\/p5\/20180629\/1649\/5b35f297e8a93829192.jpg",
+                "FileType": 41,
+                "UserId": self.userid,
+                "V1": "",
+                "V10": "",
+                "V2": "",
+                "V3": "",
+                "V4": "",
+                "V5": "",
+                "V6": "",
+                "V7": "",
+                "V8": "",
+                "V9": "",
+                "id": 0,
+                "information_id": 22,
+                "originalfilename": "\/p5\/20180629\/1649\/5b35f2987e982706162.jpg",
+                "pic_id": "pic_41"
+            }, {
+                "CarId": self.car_id,
+                "FileId": 0,
+                "FileName": "\/p5\/20180629\/1649\/5b35f29926272901219.jpg",
+                "FileType": 40,
+                "UserId": self.userid,
+                "V1": "",
+                "V10": "",
+                "V2": "",
+                "V3": "",
+                "V4": "",
+                "V5": "",
+                "V6": "",
+                "V7": "",
+                "V8": "",
+                "V9": "",
+                "id": 0,
+                "information_id": 22,
+                "originalfilename": "",
+                "pic_id": "pic_40"
+            }, {
+                "CarId": self.car_id,
+                "FileId": 0,
+                "FileName": "\/p5\/20180629\/1649\/5b35f299a7f6c327949.jpg",
+                "FileType": 4,
+                "UserId": self.userid,
+                "V1": "",
+                "V10": "",
+                "V2": "",
+                "V3": "",
+                "V4": "",
+                "V5": "",
+                "V6": "",
+                "V7": "",
+                "V8": "",
+                "V9": "",
+                "id": 0,
+                "information_id": 22,
+                "originalfilename": "\/p5\/20180629\/1649\/5b35f29a2c91c115553.jpg",
+                "pic_id": "pic_4"
+            }]
+        }
+        data1 = json.dumps(data)
+        getzjpz = requests.post(url=self.url_updatereport, json=data, headers=header)
+        # print(getzjpz.text)
+        print('证件拍照上传完成')
+
+    # 手续信息上传 2
+    def sxxx_updatereport(self):
+        data = {
+            "isrecheck": 0,
+            "type": 1,
+            "order_id": 0,
+            "is_big": 0,
+            "carid": self.car_id,
+            "order_car_id": self.xcarid,
+            "tvaid": self.tvaid,
+            "tvuid": self.userid,
+            "isuseoldreport": 0,
+            "oldcarid": 0,
+            "moduleid": "2",
+            "baseinfo": {
+                "YxpXdrAccout": "",
+                "YxpXdrName": "",
+                "_carusetype": 0,
+                "_ishaveassurancerecord": 0,
+                "_orginalprice": 10,
+                "annualvalidity": "1971-01-01 00:00:00",
+                "bodywork": 0,
+                "brand_model": "宝马",
+                "branid": 0,
+                "buyingreceipt": 0,
+                "carWebInfo": "",
+                "car_id": self.xcarid,
+                "car_info_explain": "",
+                "car_info_explain_time": 0,
+                "car_model_explain_time": 0,
+                "carbasicid": 0,
+                "carbody": "",
+                "carbodycolor": "黑色",
+                "carconfiginfo": "",
+                "carfullname": self.carfullname,
+                "carid": self.car_id,
+                "carkeys": -1,
+                "carmodel": "",
+                "carshiptaxexpireyear": "1971-01-01 00:00:00",
+                "cartype": 1,
+                "certificatecard": -1,
+                "chakeversion": "5.0.7",
+                "check_status": 0,
+                "chose_id": "",
+                "chose_result": "",
+                "city_name": "",
+                "cityareaid": 0,
+                "clientTaskId": "",
+                "clientid": 0,
+                "comassurancemoney": "",
+                "commercial_insurance_policy_type": -1,
+                "conditiongrade": "",
+                "dealer_price": 10,
+                "detectionyear": "1970-01-01 08:00:00",
+                "deviceId": self.device,
+                "devicemodel": "Lenovo Z90-7",
+                "drivingcertification": -1,
+                "engine_type": self.vin,
+                "engineno": self.vin,
+                "enumber_identity": "",
+                "enumber_result": "2",
+                "exception_status": -1,
+                "exchangewithlicense": -1,
+                "exhaust": 0,
+                "explain": "",
+                "explainbook": -1,
+                "factorycode": -1,
+                "fee": 0,
+                "final_result": "2",
+                "final_vin": "",
+                "foassurancedateyear": "1971-01-01 00:00:00",
+                "formalities_retroactive": "1",
+                "fueltype": 0,
+                "gbcode_identity": "",
+                "gbcode_result": "2",
+                "insurance_policy_type": -1,
+                "isCarcomplex": "false",
+                "isHaveFoAssuranceLable": -1,
+                "isRecog": 0,
+                "isReprotType": 0,
+                "isStartDiscener": "false",
+                "is_arbitral": 0,
+                "is_big": 0,
+                "is_domestic": 0,
+                "is_ledger": 0,
+                "isannualvalidity": 0,
+                "isbubblecar": -1,
+                "isburncar": -1,
+                "isbutlerservice": 0,
+                "ischange_fee": -1,
+                "ischangeenginenumber": 0,
+                "ishavecard": 0,
+                "ishavecarshiptax": 0,
+                "ishavecomassurance": 0,
+                "ishavecomassuranceyear": "1971-01-01 00:00:00",
+                "ishavefoassurance": 0,
+                "ishavemaintenance": 0,
+                "ishaveoldreport": 0,
+                "ishavepurchasetax": -1,
+                "isindetail": 0,
+                "ismajorcity": 0,
+                "isnew": 1,
+                "isrefit": -1,
+                "issmallreport": 1,
+                "isuseoldreport": 0,
+                "jqinsurance": -1,
+                "kerb_weight": 1,
+                "law_less_blame": "0",
+                "lawless": "",
+                "left45pic": "",
+                "licensName": "北京,北京",
+                "licenscity": 201,
+                "licensecar": self.licensecar,
+                "licensecarstatue": 0,
+                "licenseyear": "2016-06-25 00:00:00",
+                "licensprovince": 2,
+                "maintainmanual": -1,
+                "maintenance_newid": "0",
+                "maintenanceid": "",
+                "maintenancekm": 0,
+                "manager_name": self.manager_name,
+                "mileage": 0,
+                "mobiledeviceos": "android",
+                "modified_vesting_party": "1",
+                "mortgage_registration": 0,
+                "newcarphoto": -1,
+                "newcarwarranty": 0,
+                "noticenumber": "",
+                "oldcarid": 0,
+                "order_id": 0,
+                "owner": 1,
+                "owntvaid": self.weituoid,
+                "papers": 0,
+                "parkingnumber": "",
+                "peccancydays": 0,
+                "peccancyscore": 0,
+                "peccancyyuan": 0,
+                "platenumber_identity": "",
+                "platenumber_result": "2",
+                "practicalmileage": 0,
+                "price_total": 0,
+                "price_user": "14",
+                "price_user_moblie": self.price_user_moblie,
+                "producerid": 0,
+                "proxytvaid": 0,
+                "reason_no": 0,
+                "refitcontent": "",
+                "registdate_identity": "1971-01-01 00:00:00",
+                "registdate_result": "2",
+                "registerdate": "2017-06-25 00:00:00",
+                "registration": -1,
+                "report_status": 1,
+                "return_id": "",
+                "return_num": "",
+                "return_result": "",
+                "seating_num": 3,
+                "selfinsurance": -1,
+                "serieid": 0,
+                "skeletonpaint": "0",
+                "smallExplain": "",
+                "sourcefrom": 3,
+                "sourceto": -1,
+                "src": "0",
+                "taskid": 0,
+                "thenewcar": 0,
+                "total_weight": 2,
+                "transfer_marketid": 0,
+                "transfer_type": 3,
+                "transfercount": -1,
+                "transferdate": "1971-01-01 00:00:00",
+                "transferinvoice": -1,
+                "transmission": 0,
+                "u2status": 0,
+                "unique_name": self.unique_name,
+                "uniqueid": self.uniqueid,
+                "uniqueserial": self.uniqueserial,
+                "userid": self.userid,
+                "vin": self.vin,
+                "vin11": "",
+                "vin_identity": "",
+                "vin_result": "2",
+                "wtengineno": -1,
+                "wtlicensecar": -1,
+                "wtvin": -1
+            },
+            "owntvaid": self.weituoid
+        }
+        data1 = json.dumps(data)
+        getsxxx = requests.post(url=self.url_updatereport, data=data, headers=header).json()
+        # print(getsxxx)
+        print('手续信息上传完成')
+
+    # 车型信息上传 3
+    def cxxx_updatereport(self):
+        data = {
+            "isrecheck": 0,
+            "type": 1,
+            "order_id": 0,
+            "is_big": 0,
+            "carid": self.car_id,
+            "order_car_id": self.xcarid,
+            "tvaid": self.tvaid,
+            "tvuid": self.userid,
+            "isuseoldreport": 0,
+            "oldcarid": 0,
+            "moduleid": "3",
+            "carmodelinfo": {
+                "YxpXdrAccout": "",
+                "YxpXdrName": "",
+                "_carusetype": 0,
+                "_ishaveassurancerecord": 0,
+                "_orginalprice": 5,
+                "annualvalidity": "1971-01-01 00:00:00",
+                "bodywork": 0,
+                "brand_model": "宝马",
+                "branid": 2000000038,
+                "buyingreceipt": 0,
+                "carWebInfo": "",
+                "car_id": self.xcarid,
+                "car_info_explain": "",
+                "car_info_explain_time": 0,
+                "car_model_explain": "",
+                "car_model_explain_time": 0,
+                "carbasicid": 2090012996,
+                "carbody": "",
+                "carbodycolor": "银色",
+                "carconfiginfo": "",
+                "carfullname": "宝马\/5系\/2018款 2.0T 自动 530Li尊享型豪华套装",
+                "carid": self.car_id,
+                "carkeys": 1,
+                "carmodel": "",
+                "carshiptaxexpireyear": "1971-01-01 00:00:00",
+                "cartype": 1,
+                "certificatecard": -1,
+                "chakeversion": "5.0.8",
+                "check_status": 0,
+                "chose_id": "",
+                "chose_result": "",
+                "city_name": "",
+                "cityareaid": 0,
+                "clientTaskId": "",
+                "clientid": 0,
+                "comassurancemoney": "",
+                "commercial_insurance_policy_type": -1,
+                "conditiongrade": "",
+                "dealer_price": 1,
+                "detectionyear": "1970-01-01 08:00:00",
+                "deviceId": self.device,
+                "devicemodel": "Lenovo Z90-7",
+                "drivingcertification": -1,
+                "engine_type": self.vin,
+                "engineno": self.vin,
+                "enumber_identity": "",
+                "enumber_result": "2",
+                "exception_status": -1,
+                "exchangewithlicense": -1,
+                "exhaust": 2,
+                "explain": "",
+                "explainbook": -1,
+                "factorycode": -1,
+                "fee": 0,
+                "final_result": "2",
+                "final_vin": "",
+                "foassurancedateyear": "1971-01-01 00:00:00",
+                "formalities_retroactive": "1",
+                "fueltype": 1,
+                "gbcode_identity": "",
+                "gbcode_result": "2",
+                "insurance_policy_type": -1,
+                "isCarcomplex": "false",
+                "isHaveFoAssuranceLable": -1,
+                "isRecog": 0,
+                "isReprotType": 0,
+                "isStartDiscener": "false",
+                "is_arbitral": 0,
+                "is_big": 0,
+                "is_domestic": 0,
+                "is_ledger": 0,
+                "isannualvalidity": 0,
+                "isbubblecar": -1,
+                "isburncar": -1,
+                "isbutlerservice": 0,
+                "ischange_fee": -1,
+                "ischangeenginenumber": 0,
+                "ishavecard": 0,
+                "ishavecarshiptax": 0,
+                "ishavecomassurance": 0,
+                "ishavecomassuranceyear": "1971-01-01 00:00:00",
+                "ishavefoassurance": 0,
+                "ishavemaintenance": 0,
+                "ishaveoldreport": 0,
+                "ishavepurchasetax": -1,
+                "isindetail": 0,
+                "ismajorcity": 0,
+                "isnew": 1,
+                "isrefit": -1,
+                "issmallreport": 1,
+                "isuseoldreport": 0,
+                "jqinsurance": -1,
+                "kerb_weight": 1,
+                "law_less_blame": "0",
+                "lawless": "",
+                "left45pic": "",
+                "licensName": "上海,上海",
+                "licenscity": 2401,
+                "licensecar": self.licensecar,
+                "licensecarstatue": 0,
+                "licenseyear": "2016-06-29 00:00:00",
+                "licensprovince": 24,
+                "maintainmanual": -1,
+                "maintenance_newid": "0",
+                "maintenanceid": "",
+                "maintenancekm": 0,
+                "manager_name": self.manager_name,
+                "mileage": 0,
+                "mobiledeviceos": "android",
+                "modified_vesting_party": "1",
+                "mortgage_registration": 0,
+                "newcarphoto": -1,
+                "newcarwarranty": 0,
+                "noticenumber": "",
+                "oldcarid": 0,
+                "order_id": 0,
+                "owner": 0,
+                "owntvaid": self.weituoid,
+                "papers": 0,
+                "parkingnumber": self.parking_no,
+                "peccancydays": 0,
+                "peccancyscore": 0,
+                "peccancyyuan": 0,
+                "platenumber_identity": "",
+                "platenumber_result": "2",
+                "practicalmileage": 0,
+                "price_total": 0,
+                "price_user": self.price_user,
+                "price_user_moblie": self.price_user_moblie,
+                "producerid": 2090012996,
+                "proxytvaid": 0,
+                "reason_no": 0,
+                "refitcontent": "",
+                "registdate_identity": "1971-01-01 00:00:00",
+                "registdate_result": "2",
+                "registerdate": "2017-06-29 00:00:00",
+                "registration": -1,
+                "report_status": 1,
+                "return_id": "",
+                "return_num": "",
+                "return_result": "",
+                "seating_num": 3,
+                "selfinsurance": -1,
+                "serieid": 2000000425,
+                "skeletonpaint": "0",
+                "smallExplain": "",
+                "sourcefrom": 3,
+                "sourceto": -1,
+                "src": "0",
+                "taskid": 0,
+                "thenewcar": 0,
+                "total_weight": 2,
+                "transfer_marketid": 0,
+                "transfer_type": 3,
+                "transfercount": -1,
+                "transferdate": "1971-01-01 00:00:00",
+                "transferinvoice": -1,
+                "transmission": 0,
+                "u2status": 0,
+                "unique_name": self.unique_name,
+                "uniqueid": self.uniqueid,
+                "uniqueserial": self.uniqueserial,
+                "userid": self.userid,
+                "vin": self.vin,
+                "vin11": "",
+                "vinEnd_time": "2018-06-29 17:10:20",
+                "vin_identity": "",
+                "vin_result": "2",
+                "wtengineno": -1,
+                "wtlicensecar": -1,
+                "wtvin": -1
+            }
+        }
+        data1 = json.dumps(data)
+        getcxxx = requests.post(url=self.url_updatereport, data=data, headers=header).json()
+        # print(getcxxx)
+        print('车型信息上传完成')
+
+    # 行车电脑上传 4
+    def xcdn_updatereport(self):
+        data = {
+            "is_edit": 0,
+            "type": 1,
+            "isrecheck": 0,
+            "order_id": 0,
+            "is_big": 0,
+            "carid": self.car_id,
+            "taskid": 0.0,
+            "order_car_id": self.xcarid,
+            "tvaid": self.tvaid,
+            "tvuid": self.userid,
+            "moduleid": 4,
+            "clienttaskid": "",
+            "deviceid": self.device,
+            "owntvaid": 0,
+            "isuseoldreport": 1,
+            "oldcarid": 0,
+            "paperpiclist": "",
+            "baseinfo": "",
+            "carmodelinfo": "",
+            "dialoginfo": {
+                "diagdata": "{\"unCheck\":\"未检测\",\"lawless\":\"\",\"reason_no\":1}",
+                "lawless": "",
+                "reason_no": 0
+            }
+        }
+        data1 = json.dumps(data)
+        xcdnget = requests.post(url=self.url_updatereport, data=data, headers=header).json()
+        # print(xcdnget)
+        print('行车电脑上传完成')
+
+    # 车身主图上传 5
+    def cszt_updatereport(self):
+        data = {
+            "isrecheck": 0,
+            "type": 1,
+            "order_id": 0,
+            "is_big": 0,
+            "carid": self.car_id,
+            "order_car_id": self.xcarid,
+            "tvaid": self.tvaid,
+            "tvuid": self.userid,
+            "isuseoldreport": 0,
+            "oldcarid": 0,
+            "moduleid": "5",
+            "mainpic": {
+                "data": [{
+                    "CarId": self.car_id,
+                    "FileId": 0,
+                    "FileName": "\/p5\/20180629\/1728\/5b35fbc2c20ea835355.jpg",
+                    "FileType": 83,
+                    "UserId": self.userid,
+                    "V1": "",
+                    "V10": "",
+                    "V2": "",
+                    "V3": "",
+                    "V4": "",
+                    "V5": "",
+                    "V6": "",
+                    "V7": "",
+                    "V8": "",
+                    "V9": "",
+                    "id": 0,
+                    "information_id": 4,
+                    "originalfilename": "",
+                    "pic_id": "pic_83"
+                }, {
+                    "CarId": self.car_id,
+                    "FileId": 0,
+                    "FileName": "\/p5\/20180629\/1728\/5b35fbc31d677419415.jpg",
+                    "FileType": 78,
+                    "UserId": self.userid,
+                    "V1": "",
+                    "V10": "",
+                    "V2": "",
+                    "V3": "",
+                    "V4": "",
+                    "V5": "",
+                    "V6": "",
+                    "V7": "",
+                    "V8": "",
+                    "V9": "",
+                    "id": 0,
+                    "information_id": 4,
+                    "originalfilename": "",
+                    "pic_id": "pic_78"
+                }, {
+                    "CarId": self.car_id,
+                    "FileId": 0,
+                    "FileName": "\/p5\/20180629\/1728\/5b35fbc36f94b865569.jpg",
+                    "FileType": 81,
+                    "UserId": self.userid,
+                    "V1": "",
+                    "V10": "",
+                    "V2": "",
+                    "V3": "",
+                    "V4": "",
+                    "V5": "",
+                    "V6": "",
+                    "V7": "",
+                    "V8": "",
+                    "V9": "",
+                    "id": 0,
+                    "information_id": 4,
+                    "originalfilename": "",
+                    "pic_id": "pic_81"
+                }, {
+                    "CarId": self.car_id,
+                    "FileId": 0,
+                    "FileName": "\/p5\/20180629\/1728\/5b35fbc3d9274713916.jpg",
+                    "FileType": 53,
+                    "UserId": self.userid,
+                    "V1": "",
+                    "V10": "",
+                    "V2": "",
+                    "V3": "",
+                    "V4": "",
+                    "V5": "",
+                    "V6": "",
+                    "V7": "",
+                    "V8": "",
+                    "V9": "",
+                    "id": 0,
+                    "information_id": 4,
+                    "originalfilename": "",
+                    "pic_id": "pic_53"
+                }, {
+                    "CarId": self.car_id,
+                    "FileId": 0,
+                    "FileName": "\/p5\/20180629\/1728\/5b35fbc43d459105491.jpg",
+                    "FileType": 75,
+                    "UserId": self.userid,
+                    "V1": "",
+                    "V10": "",
+                    "V2": "",
+                    "V3": "",
+                    "V4": "",
+                    "V5": "",
+                    "V6": "",
+                    "V7": "",
+                    "V8": "",
+                    "V9": "",
+                    "id": 0,
+                    "information_id": 4,
+                    "originalfilename": "",
+                    "pic_id": "pic_75"
+                }, {
+                    "CarId": self.car_id,
+                    "FileId": 0,
+                    "FileName": "\/p5\/20180629\/1728\/5b35fbc49d4d8869298.jpg",
+                    "FileType": 33,
+                    "UserId": self.userid,
+                    "V1": "",
+                    "V10": "",
+                    "V2": "",
+                    "V3": "",
+                    "V4": "",
+                    "V5": "",
+                    "V6": "",
+                    "V7": "",
+                    "V8": "",
+                    "V9": "",
+                    "id": 0,
+                    "information_id": 4,
+                    "originalfilename": "",
+                    "pic_id": "pic_33"
+                }, {
+                    "CarId": self.car_id,
+                    "FileId": 0,
+                    "FileName": "\/p5\/20180629\/1728\/5b35fbc5238ce791330.jpg",
+                    "FileType": 82,
+                    "UserId": self.userid,
+                    "V1": "",
+                    "V10": "",
+                    "V2": "",
+                    "V3": "",
+                    "V4": "",
+                    "V5": "",
+                    "V6": "",
+                    "V7": "",
+                    "V8": "",
+                    "V9": "",
+                    "id": 0,
+                    "information_id": 4,
+                    "originalfilename": "",
+                    "pic_id": "pic_82"
+                }, {
+                    "CarId": self.car_id,
+                    "FileId": 0,
+                    "FileName": "\/p5\/20180629\/1728\/5b35fbc6b4716386024.jpg",
+                    "FileType": 57,
+                    "UserId": self.userid,
+                    "V1": "",
+                    "V10": "",
+                    "V2": "",
+                    "V3": "",
+                    "V4": "",
+                    "V5": "",
+                    "V6": "",
+                    "V7": "",
+                    "V8": "",
+                    "V9": "",
+                    "id": 0,
+                    "information_id": 4,
+                    "originalfilename": "",
+                    "pic_id": "pic_57"
+                }, {
+                    "CarId": self.car_id,
+                    "FileId": 0,
+                    "FileName": "\/p5\/20180629\/1728\/5b35fbc730584895416.jpg",
+                    "FileType": 76,
+                    "UserId": self.userid,
+                    "V1": "",
+                    "V10": "",
+                    "V2": "",
+                    "V3": "",
+                    "V4": "",
+                    "V5": "",
+                    "V6": "",
+                    "V7": "",
+                    "V8": "",
+                    "V9": "",
+                    "id": 0,
+                    "information_id": 4,
+                    "originalfilename": "",
+                    "pic_id": "pic_76"
+                }, {
+                    "CarId": self.car_id,
+                    "FileId": 0,
+                    "FileName": "\/p5\/20180629\/1728\/5b35fbc79d733275418.jpg",
+                    "FileType": 56,
+                    "UserId": self.userid,
+                    "V1": "",
+                    "V10": "",
+                    "V2": "",
+                    "V3": "",
+                    "V4": "",
+                    "V5": "",
+                    "V6": "",
+                    "V7": "",
+                    "V8": "",
+                    "V9": "",
+                    "id": 0,
+                    "information_id": 4,
+                    "originalfilename": "",
+                    "pic_id": "pic_56"
+                }, {
+                    "CarId": self.car_id,
+                    "FileId": 0,
+                    "FileName": "\/p5\/20180629\/1728\/5b35fbc824fb0683338.jpg",
+                    "FileType": 55,
+                    "UserId": self.userid,
+                    "V1": "",
+                    "V10": "",
+                    "V2": "",
+                    "V3": "",
+                    "V4": "",
+                    "V5": "",
+                    "V6": "",
+                    "V7": "",
+                    "V8": "",
+                    "V9": "",
+                    "id": 0,
+                    "information_id": 4,
+                    "originalfilename": "",
+                    "pic_id": "pic_55"
+                }, {
+                    "CarId": self.car_id,
+                    "FileId": 0,
+                    "FileName": "\/p5\/20180629\/1728\/5b35fbc892d07983294.jpg",
+                    "FileType": 54,
+                    "UserId": 41940,
+                    "V1": "",
+                    "V10": "",
+                    "V2": "",
+                    "V3": "",
+                    "V4": "",
+                    "V5": "",
+                    "V6": "",
+                    "V7": "",
+                    "V8": "",
+                    "V9": "",
+                    "id": 0,
+                    "information_id": 4,
+                    "originalfilename": "",
+                    "pic_id": "pic_54"
+                }, {
+                    "CarId": self.car_id,
+                    "FileId": 0,
+                    "FileName": "\/p5\/20180629\/1728\/5b35fbc912a11968621.jpg",
+                    "FileType": 51,
+                    "UserId": self.userid,
+                    "V1": "",
+                    "V10": "",
+                    "V2": "",
+                    "V3": "",
+                    "V4": "",
+                    "V5": "",
+                    "V6": "",
+                    "V7": "",
+                    "V8": "",
+                    "V9": "",
+                    "id": 0,
+                    "information_id": 4,
+                    "originalfilename": "",
+                    "pic_id": "pic_51"
+                }, {
+                    "CarId": self.car_id,
+                    "FileId": 0,
+                    "FileName": "\/p5\/20180629\/1728\/5b35fbc9858db585802.jpg",
+                    "FileType": 52,
+                    "UserId": self.userid,
+                    "V1": "",
+                    "V10": "",
+                    "V2": "",
+                    "V3": "",
+                    "V4": "",
+                    "V5": "",
+                    "V6": "",
+                    "V7": "",
+                    "V8": "",
+                    "V9": "",
+                    "id": 0,
+                    "information_id": 4,
+                    "originalfilename": "",
+                    "pic_id": "pic_52"
+                }, {
+                    "CarId": self.car_id,
+                    "FileId": 0,
+                    "FileName": "\/p5\/20180629\/1728\/5b35fbca002d9376124.jpg",
+                    "FileType": 6,
+                    "UserId": self.userid,
+                    "V1": "",
+                    "V10": "",
+                    "V2": "",
+                    "V3": "",
+                    "V4": "",
+                    "V5": "",
+                    "V6": "",
+                    "V7": "",
+                    "V8": "",
+                    "V9": "",
+                    "id": 0,
+                    "information_id": 4,
+                    "originalfilename": "",
+                    "pic_id": "pic_6"
+                }],
+                "mileage": 52013,
+                "carconfiginfo": "普通天窗"
+            }
+        }
+        data1 = json.dumps(data)
+        getcszt = requests.post(url=self.url_updatereport, json=data, headers=header)
+        # print(getcszt.text)
+        print('车身主图上传')
+
+    # 车况检测上传 6
+    def ckjc_updatereport(self):
+        data = {
+            "isrecheck": 0,
+            "type": 1,
+            "order_id": 0,
+            "is_big": 0,
+            "carid": self.car_id,
+            "order_car_id": self.xcarid,
+            "tvaid": self.tvaid,
+            "tvuid": self.userid,
+            "isuseoldreport": 0,
+            "oldcarid": 0,
+            "moduleid": "6",
+            "conditiongradesmall": "1|1",
+            "conditiongrade": "",
+            "skeleton_level": "2",
+            "skeleton_level_explain_no": "1#",
+            "skeleton_level_explain": "车身加强件有修复痕迹#",
+            "skeleton_explain": "",
+            "skeleton_explain_url": "",
+            "skeleton_explain_time": 0,
+            "appearance_level": "2",
+            "appearance_level_explain_no": "2#",
+            "appearance_level_explain": "外观漆面完整、有未伤及漆面的损伤#",
+            "appearance_explain": "",
+            "appearance_explain_url": "",
+            "appearance_explain_time": 0,
+            "interior_level": "4",
+            "interior_level_explain_no": "1#",
+            "interior_level_explain": "内饰有使用磨损#",
+            "interior_explain": "",
+            "interior_explain_url": "",
+            "interior_explain_time": 0,
+            "isbubblecar": -1,
+            "isburncar": -1
+        }
+        data1 = json.dumps(data)
+        getckjc = requests.post(url=self.url_updatereport, data=data, headers=header).json()
+        # print(getckjc)
+        print('车况检测上传完成')
+
+    # 机电检查上传 7
+    def jdjc_updatereport(self):
+        data = {
+            "isrecheck": 0,
+            "type": 1,
+            "order_id": 0,
+            "is_big": 0,
+            "carid": self.car_id,
+            "order_car_id": self.xcarid,
+            "tvaid": self.tvaid,
+            "tvuid": self.userid,
+            "isuseoldreport": 0,
+            "oldcarid": 0,
+            "moduleid": "7",
+            "conditioninfo": {
+                "antifreezeremark": "",
+                "antifreezestatus": "-1",
+                "appearance_explain": "",
+                "appearance_explain_time": 0,
+                "appearance_explain_url": "",
+                "appearance_level": "3",
+                "appearance_level_explain": "外观覆盖件有更换历史（不含保险杠）不需要再次修复#",
+                "appearance_level_explain_no": "1#",
+                "batterycheckremark": "",
+                "batterycheckstatus": "-1",
+                "beltcheckremark": "",
+                "beltcheckstatus": "-1",
+                "brakecontent": "",
+                "brakeoil": "-1",
+                "brakeoilremark": "",
+                "brakestatus": "-1",
+                "carconditionid": 0,
+                "carid": self.car_id,
+                "condition_explain": "",
+                "condition_explain_time": 0,
+                "condition_explain_url": "",
+                "condition_level": "4",
+                "condition_level_explain": "发动机发生更换#",
+                "condition_level_explain_no": "4#",
+                "dampingcontent": "",
+                "dampingstatus": "-1",
+                "electric_explain": "",
+                "electric_explain_time": 0,
+                "electric_explain_url": "",
+                "electric_level": "3",
+                "electric_level_explain": "车辆存在电器改装，并失效或破损#",
+                "electric_level_explain_no": "2#",
+                "electricalcontent": "",
+                "electricalstatus": "0",
+                "endcarcontent": "",
+                "endcarstatus": "-1",
+                "engineoilremark": "",
+                "engineoilstatus": "-1",
+                "exhaustcontent": "",
+                "exhauststatus": "-1",
+                "explain": "如有加、改装影响过户由卖方负责,手续丢失由卖方负责。",
+                "gearboxcontent": "",
+                "gearboxstatus": "0",
+                "interior_explain": "",
+                "interior_explain_time": 0,
+                "interior_explain_url": "",
+                "interior_level": "4",
+                "interior_level_explain": "内饰有使用磨损#",
+                "interior_level_explain_no": "1#",
+                "launchcontent": "",
+                "launchstatus": "0",
+                "paintrepair": "",
+                "poweroil": "-1",
+                "poweroilremark": "",
+                "presentstatus": "",
+                "repairstatus": "",
+                "servicing_level": "",
+                "skeleton_explain": "",
+                "skeleton_explain_time": 0,
+                "skeleton_explain_url": "",
+                "skeleton_level": "2",
+                "skeleton_level_explain": "车身加强件有修复痕迹#",
+                "skeleton_level_explain_no": "1#",
+                "smokecheckremark": "",
+                "smokecheckstatus": "0",
+                "startcontent": "",
+                "startstatus": "0",
+                "steeringassistremark": "",
+                "steeringassiststatus": "0",
+                "userid": self.userid,
+                "workcheckremark": "",
+                "workcheckstatus": "0"
+            }
+        }
+        data1 = json.dumps(data)
+        getjdjc = requests.post(url=self.url_updatereport, data=data, headers=header).json()
+        # print(getjdjc)
+        print('机电检查上传完成')
+
+    # 工具检查上传 8
+    def gjjc_updatereport(self):
+        data = {
+            "isrecheck": 0,
+            "type": 1,
+            "order_id": 0,
+            "is_big": 0,
+            "carid": self.car_id,
+            "order_car_id": self.xcarid,
+            "tvaid": self.tvaid,
+            "tvuid": self.userid,
+            "isuseoldreport": 0,
+            "oldcarid": 0,
+            "moduleid": "8",
+            "attachmentinfo": {
+                "attachmentid": 0,
+                "carid": 0,
+                "explain": "",
+                "handdoorcontent": "",
+                "handdoorstatus": 0,
+                "keycontent": "",
+                "keystatus": 0,
+                "lightingcontent": "",
+                "lightingstatus": 0,
+                "sparetirecontent": "",
+                "sparetirestatus": "-1",
+                "toolscontent": "",
+                "toolsstatus": "-1",
+                "userid": 0
+            }
+        }
+        data1 = json.dumps(data)
+        getgjjc = requests.post(url=self.url_updatereport, data=data, headers=header).json()
+        # print(getgjjc)
+        print('工具检查上传完成')
+
+    # 油液检查上传 9
+    def yyjc_updatereport(self):
+        data = {
+            "isrecheck": 0,
+            "type": 1,
+            "order_id": 0,
+            "is_big": 0,
+            "carid": self.car_id,
+            "order_car_id": self.xcarid,
+            "tvaid": self.tvaid,
+            "tvuid": self.userid,
+            "isuseoldreport": 0,
+            "oldcarid": 0,
+            "moduleid": "14",
+            "oilinfo": {
+                "antifreezeremark": "",
+                "antifreezestatus": "0",
+                "appearance_explain": "",
+                "appearance_explain_time": 0,
+                "appearance_explain_url": "",
+                "appearance_level": "",
+                "appearance_level_explain": "",
+                "appearance_level_explain_no": "",
+                "batterycheckremark": "",
+                "batterycheckstatus": "0",
+                "beltcheckremark": "",
+                "beltcheckstatus": "0",
+                "brakecontent": "",
+                "brakeoil": "0",
+                "brakeoilremark": "",
+                "brakestatus": "-1",
+                "carconditionid": 0,
+                "carid": self.car_id,
+                "condition_explain": "",
+                "condition_explain_time": 0,
+                "condition_explain_url": "",
+                "condition_level": "",
+                "condition_level_explain": "",
+                "condition_level_explain_no": "",
+                "dampingcontent": "",
+                "dampingstatus": "-1",
+                "electric_explain": "",
+                "electric_explain_time": 0,
+                "electric_explain_url": "",
+                "electric_level": "",
+                "electric_level_explain": "",
+                "electric_level_explain_no": "",
+                "electricalcontent": "",
+                "electricalstatus": "-1",
+                "endcarcontent": "",
+                "endcarstatus": "-1",
+                "engineoilremark": "",
+                "engineoilstatus": "0",
+                "exhaustcontent": "",
+                "exhauststatus": "-1",
+                "explain": "此车过户地为“优信拍指定”，如有加、改装影响过户由卖方负责,手续丢失由卖方负责。",
+                "gearboxcontent": "",
+                "gearboxstatus": "-1",
+                "interior_explain": "",
+                "interior_explain_time": 0,
+                "interior_explain_url": "",
+                "interior_level": "",
+                "launchcontent": "",
+                "launchstatus": "-1",
+                "paintrepair": "",
+                "poweroil": "0",
+                "poweroilremark": "",
+                "presentstatus": "",
+                "repairstatus": "",
+                "servicing_level": "",
+                "skeleton_explain": "",
+                "skeleton_explain_time": 0,
+                "skeleton_explain_url": "",
+                "skeleton_level": "",
+                "skeleton_level_explain": "",
+                "skeleton_level_explain_no": "",
+                "smokecheckremark": "",
+                "smokecheckstatus": "-1",
+                "startcontent": "",
+                "startstatus": "-1",
+                "steeringassistremark": "",
+                "steeringassiststatus": "-1",
+                "userid": self.userid,
+                "workcheckremark": "",
+                "workcheckstatus": "-1"
+            }
+        }
+        data1 = json.dumps(data)
+        getyyjc = requests.post(url=self.url_updatereport, data=data, headers=header).json()
+        # print(getyyjc)
+        print("油液检查上传完成")
+
+    # 改装说明上传 10
+    def gzsm_updatereport(self):
+        data = {
+            "isrecheck": 0,
+            "type": 1,
+            "order_id": 0,
+            "is_big": 0,
+            "carid": self.car_id,
+            "order_car_id": self.xcarid,
+            "tvaid": self.tvaid,
+            "tvuid": self.userid,
+            "isuseoldreport": 0,
+            "oldcarid": 0,
+            "moduleid": "11",
+            "refitinfo": {
+                "YxpXdrAccout": "",
+                "YxpXdrName": "",
+                "_carusetype": -1,
+                "_ishaveassurancerecord": 0,
+                "_orginalprice": 0,
+                "annualvalidity": "1971-01-01 00:00:00",
+                "bodywork": 0,
+                "branid": 0,
+                "buyingreceipt": -1,
+                "carWebInfo": "",
+                "car_id": self.xcarid,
+                "car_info_explain_time": 0,
+                "car_model_explain_time": 0,
+                "carbasicid": 0,
+                "carbody": "",
+                "carbodycolor": "",
+                "carconfiginfo": "",
+                "carfullname": self.carfullname,
+                "carid": self.car_id,
+                "carkeys": -1,
+                "carmodel": "",
+                "carshiptaxexpireyear": "1970-01-01 08:00:00",
+                "cartype": 0,
+                "certificatecard": -1,
+                "check_status": 0,
+                "chose_id": "",
+                "chose_result": "",
+                "city_name": "",
+                "cityareaid": 0,
+                "clientTaskId": "",
+                "clientid": 0,
+                "comassurancemoney": "0",
+                "commercial_insurance_policy_type": -1,
+                "conditiongrade": "",
+                "dealer_price": 6,
+                "detectionyear": "1970-01-01 08:00:00",
+                "deviceId": self.device,
+                "drivingcertification": -1,
+                "engineno": "",
+                "enumber_identity": "",
+                "enumber_result": "2",
+                "exception_status": -1,
+                "exchangewithlicense": -1,
+                "exhaust": 0,
+                "explain": "",
+                "explainbook": -1,
+                "factorycode": -1,
+                "fee": 0,
+                "final_result": "2",
+                "final_vin": "",
+                "foassurancedateyear": "1970-01-01 08:00:00",
+                "formalities_retroactive": "1",
+                "fueltype": -1,
+                "gbcode_identity": "",
+                "gbcode_result": "2",
+                "insurance_policy_type": -1,
+                "isCarcomplex": "false",
+                "isHaveFoAssuranceLable": -1,
+                "isRecog": 0,
+                "isReprotType": 0,
+                "isStartDiscener": "false",
+                "is_arbitral": 0,
+                "is_big": 0,
+                "is_domestic": 0,
+                "is_ledger": 0,
+                "isannualvalidity": 0,
+                "isbubblecar": -1,
+                "isburncar": -1,
+                "isbutlerservice": 0,
+                "ischange_fee": -1,
+                "ischangeenginenumber": 0,
+                "ishavecard": 0,
+                "ishavecarshiptax": -1,
+                "ishavecomassurance": -1,
+                "ishavecomassuranceyear": "1970-01-01 08:00:00",
+                "ishavefoassurance": -1,
+                "ishavemaintenance": 0,
+                "ishaveoldreport": 0,
+                "ishavepurchasetax": -1,
+                "isindetail": 0,
+                "ismajorcity": 0,
+                "isnew": -1,
+                "isrefit": 0,
+                "issmallreport": 1,
+                "isuseoldreport": 0,
+                "jqinsurance": -1,
+                "kerb_weight": 0,
+                "law_less_blame": "0",
+                "lawless": "",
+                "left45pic": "",
+                "licensName": "",
+                "licenscity": 0,
+                "licensecar": self.licensecar,
+                "licensecarstatue": 0,
+                "licenseyear": "1970-01-01 08:00:00",
+                "licensprovince": 0,
+                "maintainmanual": -1,
+                "maintenance_newid": "0",
+                "maintenanceid": "",
+                "maintenancekm": 0,
+                "manager_name": self.manager_name,
+                "mileage": 0,
+                "mobiledeviceos": "android",
+                "modified_vesting_party": "1",
+                "mortgage_registration": 0,
+                "newcarphoto": -1,
+                "newcarwarranty": 0,
+                "noticenumber": "",
+                "oldcarid": 0,
+                "order_id": 0,
+                "owner": -1,
+                "owntvaid": self.weituoid,
+                "papers": 0,
+                "parkingnumber": "",
+                "peccancydays": 0,
+                "peccancyscore": 0,
+                "peccancyyuan": 0,
+                "platenumber_identity": "",
+                "platenumber_result": "2",
+                "practicalmileage": 0,
+                "price_total": 0,
+                "price_user": self.price_user,
+                "price_user_moblie": self.price_user_moblie,
+                "producerid": 0,
+                "proxytvaid": 0,
+                "reason_no": 0,
+                "refitcontent": "",
+                "registdate_identity": "1971-01-01 00:00:00",
+                "registdate_result": "2",
+                "registerdate": "1970-01-01 08:00:00",
+                "registration": -1,
+                "report_status": 1,
+                "return_id": "",
+                "return_num": "",
+                "return_result": "",
+                "seating_num": 0,
+                "selfinsurance": -1,
+                "serieid": 0,
+                "skeletonpaint": "0",
+                "smallExplain": "",
+                "sourcefrom": 3,
+                "sourceto": -1,
+                "src": "0",
+                "taskid": 0,
+                "thenewcar": 0,
+                "total_weight": 0,
+                "transfer_marketid": 0,
+                "transfer_type": 3,
+                "transfercount": 0,
+                "transferdate": "1970-01-01 08:00:00",
+                "transferinvoice": -1,
+                "transmission": 0,
+                "u2status": 0,
+                "unique_name": self.uniqueid,
+                "uniqueid": self.uniqueid,
+                "uniqueserial": self.uniqueserial,
+                "userid": self.userid,
+                "vin": self.vin,
+                "vin11": "",
+                "vin_identity": "",
+                "vin_result": "2",
+                "wtengineno": -1,
+                "wtlicensecar": -1,
+                "wtvin": -1
+            }
+        }
+        data1 = json.dumps(data)
+        getgzsm = requests.post(url=self.url_updatereport, data=data, headers=header).json()
+        # print(getgzsm)
+        print("改装说明上传完成")
+
+    # 漆面修复概况 12
+    def qmxf_updatereport(self):
+        data = {
+            "isrecheck": 0,
+            "type": 1,
+            "order_id": 0,
+            "is_big": 0,
+            "carid": self.car_id,
+            "order_car_id": self.xcarid,
+            "tvaid": self.tvaid,
+            "tvuid": self.userid,
+            "isuseoldreport": 0,
+            "oldcarid": 0,
+            "moduleid": "12",
+            "paintrepairinfo": [{
+                "V1": "",
+                "V10": "",
+                "V2": "",
+                "V3": "",
+                "V4": "",
+                "V5": "",
+                "V6": "",
+                "V7": "",
+                "V8": "",
+                "V9": "",
+                "carid": 0,
+                "carsourcedetectid": 0,
+                "defectpic": "",
+                "detect_item": 0,
+                "detect_item_new": "",
+                "detectareatype": 6,
+                "detectdefectid": "",
+                "detectitemid": "13",
+                "detectitemmapid": "",
+                "detectlevel": 2,
+                "detectmark": 0,
+                "id": 0,
+                "information_id": 5,
+                "original": "",
+                "pic_id": "pic_13",
+                "point": "",
+                "position": 0,
+                "type": 0,
+                "userid": self.userid
+            }]
+        }
+        data1 = json.dumps(data)
+        getqmxf = requests.post(url=self.url_updatereport, json=data, headers=header)
+        # print(getqmxf.text)
+        print("漆面修复概况完成")
+
+    # 确认报告
+    def confirmreport(self):
+        data = {
+            "isbig": 0,
+            "issmallreport": "1",
+            "isrecheck": 0,
+            "carid": self.car_id,
+            "tvuid": self.userid
+        }
+        data1 = json.dumps(data)
+        getconfirmreport = requests.post(url=self.url_confirmreport, data=data, headers=header)
+        # print(getconfirmreport.text)
+        print("确认报告完成")
+
+
+if __name__ == '__main__':
+    re = chake()  # 定义通用信息
+    re.login()  # 登录
+    re.getdeliver_token()
+    re.unchecklist_search()  # 待检测列表 - vin搜索车辆
+    re.orderinfo()  # 搜索后，点击【检测报告】——检测列表
+    re.refresh_orderinfo()  # 刷新列表
+    re.getcw()  # 获取车位
+    re.zjpz_updatereport()  # 证件拍照上传
+    re.sxxx_updatereport()  # 手续信息上传
+    re.cxxx_updatereport()  # 车型信息上传
+    re.xcdn_updatereport()  # 行车电脑
+    re.cszt_updatereport()  # 车身主图
+    re.ckjc_updatereport()  # 车况检测
+    re.jdjc_updatereport()  # 机电检查
+    re.gjjc_updatereport()  # 工具检查
+    re.yyjc_updatereport()  # 油液检查
+    re.gzsm_updatereport()  # 改装说明上传
+    re.qmxf_updatereport()  # 漆面修复概况
+    #re.confirmreport()  # 确认报告
