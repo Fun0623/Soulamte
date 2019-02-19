@@ -1,3 +1,5 @@
+#对比多个指标
+import xlrd
 from xlutils.copy import copy
 import xlrd
 import xlwt
@@ -21,7 +23,7 @@ class dosheet():
             return 10
         elif 100 <= x < 10000:
             return 5
-        elif 10000 <= x:
+        elif 10000 >= x:
             return 1
 
     #定位列后，做切片操作
@@ -43,6 +45,7 @@ class dosheet():
                 self.list_result.append("符合")
             else:
                 self.list_result.append("偏差值大")
+
         return (self.list_pcz,self.list_allow,self.list_result)
 
     def color_execl(self,file_name):
@@ -61,94 +64,77 @@ class dosheet():
                     ws.write(i, k, ro.cell(i, k).value, styleBlueBkg)
         wb.save(file_name)
 
-    def write_sheet(self,r1,r2,r3):
-        t1_row1 = 3  # 是行 1月份
-        t1_row2 = 3
-        t1_row3 = 3
-
-        t2_row1=11   # 是行 2月份
-        t2_row2 = 11
-        t2_row3 = 11
+    def write_sheet(self,r1,r2,r3,a1,a2,a3):
+        row1 = 3  # 是行
+        row2 = 3
+        row3 = 3
 
         sheetname = xlrd.open_workbook('test.xlsx')
         sheetname2 = copy(sheetname)
         sheet = sheetname2.get_sheet(0)
-        #1月数据
-        for i in t1_cje_pcz:
-            sheet.write(t1_row1, r1, i)  # 第二个是列
-            t1_row1 += 1
-        for i in t1_cje_allow:
-            sheet.write(t1_row2, r2, i)
-            t1_row2 += 1
-        for i in t1_cje_yesno:
-            sheet.write(t1_row3, r3, i)
-            t1_row3 += 1
-
-        #2月数据
-        for j in t2_dau_pcz:
-            sheet.write(t2_row1,r1,j)
-            t2_row1+=1
-        for j in t2_dau_allow:
-            sheet.write(t2_row2,r2,j)
-            t2_row2+=1
-        for j in t2_dau_yesno:
-            sheet.write(t2_row3,r3,j)
-            t2_row3+=1
+        for i in a1:
+            sheet.write(row1, r1, i)  # 第二个是列
+            row1 += 1
+        for i in a2:
+            sheet.write(row2, r2, i)
+            row2 += 1
+        for i in a3:
+            sheet.write(row3, r3, i)
+            row3 += 1
 
         sheetname2.save(r'test.xlsx')
         print('偏差值计算done')
 
 if __name__=='__main__':
-    #1月数据
     #6是列
-    for i in range(6):
+    for i in range(8):
         a =dosheet(i).qp(3,8)
         if a[0]!='':
-            # print(i,a)
+            # print("i+a在这里：",i,a)
             if i==1:
-                t1_cje1 =a
-            if i==4:
-                t1_cje2=a
-            if i==2:
-                t1_dau1 =a
+                cje1 =a
             if i==5:
-                t1_dau2=a
-    t1_cje =dosheet(i).compare(t1_cje1,t1_cje2)
-    t1_dau =dosheet(i).compare(t1_dau1,t1_dau2)
-    t1_cje_pcz =t1_cje[0]
-    t1_cje_allow=t1_cje[1]
-    t1_cje_yesno=t1_cje[2]
-    t1_dau_pcz=t1_dau[0]
-    t1_dau_allow=t1_dau[1]
-    t1_dau_yesno=t1_dau[2]
+                cje2=a
+            if i==2:
+                dau1 =a
+            if i==6:
+                dau2=a
+            if i==3:
+                rs1=a
+            if i==7:
+                rs2=a
+    cje =dosheet(i).compare(cje1,cje2)
+    print("成交额的偏差值计算：分别是偏差值，允许偏差值，是否符合",cje)
+    dau =dosheet(i).compare(dau1,dau2)
+    print("DAU的偏差值计算  ：分别是偏差值，允许偏差值，是否符合",dau)
+    rs= dosheet(i).compare(rs1,rs2)
+    print("人数的偏差值计算  ：分别是偏差值，允许偏差值，是否符合",rs)
 
-    # 2月数据
-    # 6是列
-    for k in range(6):
-        b = dosheet(k).qp(11, 16)
-        if b[0] != '':
-            # print(i,b)
-            if k == 1:
-                t2_cje1 = b
-            if k == 4:
-                t2_cje2 = b
-            if k == 2:
-                t2_dau1 = b
-            if k == 5:
-                t2_dau2 = b
-    t2_cje = dosheet(k).compare(t2_cje1, t2_cje2)
-    t2_dau = dosheet(k).compare(t2_dau1, t2_dau2)
-    t2_cje_pcz = t2_cje[0]
-    t2_cje_allow = t2_cje[1]
-    t2_cje_yesno = t2_cje[2]
-    t2_dau_pcz = t2_dau[0]
-    t2_dau_allow = t2_dau[1]
-    t2_dau_yesno = t2_dau[2]
+    cje_pcz =cje[0]
+    cje_allow=cje[1]
+    cje_yesno=cje[2]
+    dau_pcz=dau[0]
+    dau_allow=dau[1]
+    dau_yesno=dau[2]
+    rs_pcz=rs[0]
+    rs_allow=rs[1]
+    rs_yesno=[2]
+    print("成交额的偏差值",cje_pcz)
+    print("成交额的允许偏差值",cje_allow)
+    print("成交额的是否符合",cje_yesno)
+    print("DAU的偏差值",dau_pcz)
+    print("DAU的允许范围",dau_allow)
+    print("DAU的是否符合",dau_yesno)
+    print("人数的偏差值", rs_pcz)
+    print("人数的允许范围", rs_allow)
+    print("人数的是否符合", rs_yesno)
 
     aaa=dosheet(10)
-    aaa.write_sheet(7,8,9)#成交额
 
-    aaa.write_sheet(10,11,12)#DAU
+    aaa.write_sheet(9,10,11,cje_pcz,cje_allow,cje_yesno)#成交额
+    aaa.write_sheet(12,13,14,dau_pcz,dau_allow,dau_yesno)#DAU
+    aaa.write_sheet(15,16,17,rs_pcz,rs_allow,rs_yesno)#人数
+
 
     aaa.color_execl('test.xlsx')
     print('颜色done')
