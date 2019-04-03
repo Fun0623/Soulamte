@@ -1,0 +1,55 @@
+import unittest
+import requests
+class Bitest(unittest.TestCase):
+    def setUp(self):
+        self.username = 'soulmate'
+        self.pwd = '111111'
+        self.baseurl = 'http://xx.test.xxx.com'
+
+        #时间段
+        self.stime = '2019-03-15'
+        self.etime = '2019-03-21'
+
+        #c2b看板
+        self.key = 'board_c2b_kb015-kb017'
+        self.type_xiansuoMoudel = 'board_c2b_kb015'
+        self.type_maicheMoudel = 'board_c2b_kb017'
+        self.cookies = ''
+
+
+    def testlogin(self):
+        datalogin = {
+            'username': self.username,
+            'password': self.pwd
+
+        }
+        urllogin = self.baseurl + '/api/common/login'
+        res = requests.post(url=urllogin, data=datalogin)
+        self.cookies = res.cookies
+        postlogin = res.json()
+        self.token = postlogin['userinfo']['token']
+        return self.cookies,self.token
+
+    def testkbxiansuo(self):
+        # print(self.token)
+        print(self.cookies)
+        data_xiansuo = {
+            'stime': self.stime,
+            'etime': self.etime,
+            'key': self.key,
+            'type': self.type_xiansuoMoudel,
+            'token': self.token
+        }
+
+        url=self.baseurl+'/api/show/ograde-merger'
+        post_xiansuo=requests.post(url=url,data=data_xiansuo,cookies=self.cookies).json()
+        xiansuoMoudel=post_xiansuo['datas']['header']
+        print(xiansuoMoudel)
+
+
+    def suite(self):
+        biTestCase=unittest.makeSuite(Bitest,'test')
+        return biTestCase
+
+if __name__=='__main__':
+    unittest.main()
