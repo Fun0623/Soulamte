@@ -1,0 +1,74 @@
+import unittest
+import requests
+class logintestclass(unittest.TestCase):
+
+    def setUp(self):
+        self.url='http://xx.test.xxx.com/api/common/login'
+
+    def testlogin1(self):
+        data={
+            'username': 'soulmate',
+            'password': '111111'
+        }
+        r=requests.post(self.url,data=data).json()
+        self.assertEqual(r['msg'],"登陆成功！")
+
+    def testlogin2(self):
+        data = {
+            'username': '',
+            'password': '111111'
+        }
+        r = requests.post(self.url, data=data).json()
+        self.assertEqual(r['msg'], "用户名和密码不能为空")
+
+    def testlogin3(self):
+        data = {
+            'username': 'soulmate',
+            'password': ''
+        }
+        r = requests.post(self.url, data=data).json()
+        self.assertEqual(r['msg'], "用户名和密码不能为空")
+
+    def testlogin4(self):
+        data = {
+            'username': 'soulmate',
+            'password': '222222'
+        }
+        r = requests.post(self.url, data=data).json()
+        self.assertEqual(r['msg'], "用户名验证失败！")
+
+    def testlogin5(self):
+        data = {
+            'username': 'soul',
+            'password': '111111'
+        }
+        r = requests.post(self.url, data=data).json()
+        self.assertEqual(r['msg'], "用户名错误或您没有权限使用此系统！")
+
+    def testdayin(self):
+        print('看看这个运行吗？')
+
+def suite():
+        #第一种，将需要运行的用例添加到TestSuite里
+        # loginTestCase=unittest.TestSuite()
+        # loginTestCase.addTest(logintestclass('testlogin1'))
+        # loginTestCase.addTest(logintestclass('testlogin2'))
+        # loginTestCase.addTest(logintestclass('testlogin3'))
+        # loginTestCase.addTest(logintestclass('testlogin4'))
+        # loginTestCase.addTest(logintestclass('testlogin5'))
+        # return loginTestCase
+
+        #第二种，运行所有test开头的函数
+        loginTestCase=unittest.makeSuite(logintestclass,"test")
+        return loginTestCase
+
+
+
+
+if __name__=="__main__":
+    #第一种
+    # runner=unittest.TextTestRunner()
+    # runner.run(suite())
+
+    #第二种
+    unittest.main()
