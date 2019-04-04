@@ -1,0 +1,112 @@
+from bilogin_完成0404 import bi_denglu
+from xlutils.copy import copy
+import xlrd
+import xlwt
+import requests
+import json
+import operator
+
+#调用登录函数
+b = bi_denglu()
+class KBc2b():
+    def __init__(self):
+        self.baseurl = 'http://xx.test.xxx.com'
+        self.stime = '2019-03-15'
+        self.etime = '2019-03-21'
+
+        # c2b看板入参
+        self.key = 'board_c2b_kb015-kb017'
+        self.type_part1 = 'board_c2b_kb015'
+        self.type_part2 = 'board_c2b_kb017'
+
+        #样本excel存放的位置
+        self.open_excel = 'D:\\1需求\\2019\\bi 1.2\\V1.2测试用例.xlsx'
+
+        #在样本中取值
+        self.books = xlrd.open_workbook(self.open_excel)
+        self.sheets = self.books.sheet_by_index(0)  # 第一页sheet
+        self.cols_targetname = self.sheets.col_values(2)  # 第三列的target_name
+        self.cols_tooltop = self.sheets.col_values(3)  # 第四列的tooltop
+
+        #定义空list接收从bi的取值
+        self.bi_part1_targetname=[]
+        self.bi_part1_tooltop=[]
+
+        self.bi_part2_targetname=[]
+        self.bi_part2_tooltop=[]
+
+
+    def kb_c2b_part1(self):
+        datal = {
+            'stime': self.stime,
+            'etime': self.etime,
+            'key': self.key,
+            'type': self.type_part1,
+            'token': b[0]
+            }
+        url=self.baseurl+'/api/show/ograde-merger'
+        res=requests.post(url,data=datal,cookies=b[1]).json()
+        # print(res['datas']['header'])
+        header=res['datas']['header']
+
+        #在list中循环取值
+        for i in header:
+            self.bi_part1_targetname.append(i.get('target_name'))
+            self.bi_part1_tooltop.append(i.get('tooltop'))
+
+        self.yb_part1_targetname = self.cols_targetname[1:19]#做target_name的切片操作
+        self.yb_part1_tooltop = self.cols_tooltop[1:19]       #做tooltop的切片操作
+
+        self.yb_part2_targetname = self.cols_targetname[19:35]  # 做target_name的切片操作
+        self.yb_part2_tooltop = self.cols_tooltop[19:35]  # 做tooltop的切片操作
+
+        if(operator.eq(sorted(self.bi_part1_targetname),sorted(self.yb_part1_targetname))):
+            print('part1的targetname校验成功')
+        else:
+            print('part2的targetname校验失败')
+
+        if(operator.eq(sorted(self.bi_part1_tooltop),sorted(self.yb_part1_tooltop))):
+            print('part1的targetname校验成功')
+        else:
+            print('part2的tooltop校验失败')
+
+    def kb_c2b_part2(self):
+        datal = {
+            'stime': self.stime,
+            'etime': self.etime,
+            'key': self.key,
+            'type': self.type_part2,
+            'token': b[0]
+        }
+        url = self.baseurl + '/api/show/ograde-merger'
+        res = requests.post(url, data=datal, cookies=b[1]).json()
+        # print(res['datas']['header'])
+        header = res['datas']['header']
+
+        # 在list中循环取值
+        for i in header:
+            self.bi_part2_targetname.append(i.get('target_name'))
+            self.bi_part2_tooltop.append(i.get('tooltop'))
+
+        self.yb_part2_targetname = self.cols_targetname[19:35]  # 做target_name的切片操作
+        self.yb_part2_tooltop = self.cols_tooltop[19:35]  # 做target_name的切片操作
+
+        print(self.bi_part2_targetname)
+        print(self.yb_part2_targetname)
+
+
+        if (operator.eq(sorted(self.bi_part2_targetname), sorted(self.yb_part2_targetname))):
+            print('part2的targetname校验成功')
+        else:
+            print('part2的targetname校验失败')
+
+        if (operator.eq(sorted(self.bi_part2_tooltop), sorted(self.yb_part2_tooltop))):
+            print('part2的tooltop校验成功')
+        else:
+            print('part2的tooltop校验失败')
+
+
+if __name__=='__main__':
+    c2bkb=KBc2b()
+    c2bkb.kb_c2b_part1()
+    c2bkb.kb_c2b_part2()
