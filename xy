@@ -1,0 +1,76 @@
+from xlutils.copy import copy
+import xlrd
+import xlwt
+import requests
+import json
+import operator
+
+class BiProject():
+    def __init__(self):
+        self.baseurl='https://xx.xxn.com'
+
+        self.username='soulmate'
+        self.pwd='Ff@12570qwertyuiop'
+
+        self.cookie=''
+
+        self.stime='2019-03-15'
+        self.etime='2019-03-21'
+        self.typye_all='board_c2b_kb015'
+        self.typye_xiansuo='board_c2b_kb017'
+
+
+    def login(self):
+        data={
+            'username':self.username,
+            'password':self.pwd
+        }
+        url=self.baseurl+'/api/common/login'
+        resa=requests.post(url,data=data,verify=False)
+        self.cookie=resa.cookies
+        reslogin=resa.json()
+        print(reslogin)
+        self.token=reslogin['userinfo']['token']
+        print(self.token)
+
+    def openex(self):
+        # 样本excel存放的位置
+        open_excel = 'D:\\1需求\\2019\\ 1.2\\V1.2测试用例.xlsx'
+
+        # 在样本中取值
+        books = xlrd.open_workbook(open_excel)
+        sheets = books.sheet_by_index(1)  # 第2页sheet
+        self.cols_展业lz量 = sheets.col_values(2)  # 第三列的展业-lz量
+
+    def kbc2b(self):
+        data={
+            'stime':self.stime,
+            'etime':self.etime,
+            'key':'board_c2b_kb015-kb017',
+            'type':self.typye_all,
+            'token':self.token
+        }
+        url=self.baseurl+'/api/show/ograde-merger'
+        resa=requests.post(url,data=data,cookies=self.cookie,verify=False).json()
+        resb=resa['datas']['chart']['4619']['y_left']
+        print(resb)
+
+        bi_展业lz量_总体=resb[0]['data']
+        bi_展业lz量_华北=resb[1]['data']
+        bi_展业lz量_华南=resb[2]['data']
+
+        # 对展业lz的切片操作
+        yb_展业lz_总体 = self.cols_展业lz量[2:9]
+        yb_展业lz_华北=self.cols_展业lz量[12:19]
+        yb_展业lz_华南 = self.cols_展业lz量[19:26]
+
+        print(yb_展业lz_总体)
+        print(yb_展业lz_华北)
+        print(yb_展业lz_华南)
+
+
+if __name__=='__main__':
+    b=BiProject()
+    b.login()
+    b.openex()
+    b.kbc2b()
