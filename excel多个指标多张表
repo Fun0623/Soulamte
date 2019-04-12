@@ -1,0 +1,176 @@
+from xlutils.copy import copy
+import xlrd
+import xlwt
+
+class dosheet():
+    def __init__(self,i):
+        #打开test.xlsx的第3个sheet
+        self.book = xlrd.open_workbook('test.xlsx')
+        self.sheet = self.book.sheet_by_index(0)
+
+        #控制列
+        self.lie = self.sheet.col_values(i)
+
+    #取值范围
+    def fanwei(self,x):
+        if 0 <= x < 10:
+            return 20
+        elif 10 <= x < 50:
+            return 15
+        elif 50 <= x < 100:
+            return 10
+        elif 100 <= x < 10000:
+            return 5
+        elif 10000 <= x:
+            return 1
+
+    #定位列后，做切片操作
+    def qp(self,x,y):
+        T=slice(x,y)
+        return self.lie[T]
+
+    #计算偏差值，允许的偏差，是否符合
+    def compare(self,bi,yb):
+        self.list_pcz = [(((bi[i] - yb[i]) / bi[i]) * 100) for i in range(0, len(bi))]
+        self.list_allow=[]
+        self.list_result=[]
+
+        for i,val in enumerate(bi):
+            allow=self.fanwei(val)
+            self.list_allow.append(allow)
+
+            if abs(self.list_pcz[i]) <= abs(allow):
+                self.list_result.append("符合")
+            else:
+                self.list_result.append("偏差值大")
+        return (self.list_pcz,self.list_allow,self.list_result)
+
+    def color_execl(self,file_name):
+        styleBlueBkg = xlwt.easyxf('pattern: pattern solid, fore_colour red;')  # 红色
+        rb = xlrd.open_workbook('test.xlsx')  # 打开t.xls文件
+        ro = rb.sheets()[0]  # 读取表单0
+        print(ro.ncols)
+        wb = copy(rb)  # 利用xlutils.copy下的copy函数复制
+        ws = wb.get_sheet(0)  # 获取表单0
+        # col = 1                                 #指定修改的列
+        for k in range(ro.ncols):
+
+            for i in range(ro.nrows):  # 循环所有的行
+                result = ro.cell(i, k).value
+                if result == "偏差值大":
+                    ws.write(i, k, ro.cell(i, k).value, styleBlueBkg)
+        wb.save(file_name)
+
+    def write_sheet(self,r1,r2,r3,a1,a2,a3):
+        t1_row1 = 3  # 是行 1月份
+        t1_row2 = 3
+        t1_row3 = 3
+
+        t2_row1=11   # 是行 2月份
+        t2_row2 = 11
+        t2_row3 = 11
+
+        sheetname = xlrd.open_workbook('test.xlsx')
+        sheetname2 = copy(sheetname)
+        sheet = sheetname2.get_sheet(0)
+        #1月数据
+        for i in a1:
+            sheet.write(t1_row1, r1, i)  # 第二个是列
+            t1_row1 += 1
+        for i in a2:
+            sheet.write(t1_row2, r2, i)
+            t1_row2 += 1
+        for i in a3:
+            sheet.write(t1_row3, r3, i)
+            t1_row3 += 1
+
+        #2月数据
+        for j in a1:
+            sheet.write(t2_row1,r1,j)
+            t2_row1+=1
+        for j in a2:
+            sheet.write(t2_row2,r2,j)
+            t2_row2+=1
+        for j in a3:
+            sheet.write(t2_row3,r3,j)
+            t2_row3+=1
+
+        sheetname2.save(r'test.xlsx')
+        print('偏差值计算done')
+
+if __name__=='__main__':
+    #1月数据
+    #6是列
+    for i in range(8):
+        a =dosheet(i).qp(3,8)
+        if a[0]!='':
+            # print(i,a)
+            if i==1:
+                t1_cje1 =a
+            if i==5:
+                t1_cje2 =a
+            if i==2:
+                t1_dau1 =a
+            if i==6:
+                t1_dau2 =a
+            if i==3:
+                t1_rs1=a
+            if i==7:
+                t1_rs2=a
+    t1_cje =dosheet(i).compare(t1_cje1,t1_cje2)
+    t1_dau =dosheet(i).compare(t1_dau1,t1_dau2)
+    t1_rs=dosheet(i).compare(t1_rs1,t1_rs2)
+    t1_cje_pcz =t1_cje[0]
+    t1_cje_allow=t1_cje[1]
+    t1_cje_yesno=t1_cje[2]
+    t1_dau_pcz=t1_dau[0]
+    t1_dau_allow=t1_dau[1]
+    t1_dau_yesno=t1_dau[2]
+    t1_rs_pcz=t1_rs[0]
+    t1_rs_allow=t1_rs[1]
+    t1_rs_yesno=t1_rs[2]
+
+    # 2月数据
+    # 6是列
+    for k in range(7):
+        b = dosheet(k).qp(11, 16)
+        if b[0] != '':
+            # print(i,b)
+            if k == 1:
+                t2_cje1 = b
+            if k == 5:
+                t2_cje2 = b
+            if k == 2:
+                t2_dau1 = b
+            if k == 6:
+                t2_dau2 = b
+            if k==3:
+                t2_rs1=b
+            if k==7:
+                t2_rs2=b
+    t2_cje = dosheet(k).compare(t2_cje1, t2_cje2)
+    t2_dau = dosheet(k).compare(t2_dau1, t2_dau2)
+    t2_rs=dosheet(k).compare(t2_rs1,t2_rs2)
+    t2_cje_pcz = t2_cje[0]
+    t2_cje_allow = t2_cje[1]
+    t2_cje_yesno = t2_cje[2]
+    t2_dau_pcz = t2_dau[0]
+    t2_dau_allow = t2_dau[1]
+    t2_dau_yesno = t2_dau[2]
+    t2_rs_pcz=t2_rs[0]
+    t2_rs_allow=t2_rs[1]
+    t2_rs_yesno=t2_rs[2]
+
+    aaa=dosheet(10)
+    #1月份
+    aaa.write_sheet(9,10,11,t1_cje_pcz,t1_cje_allow,t1_cje_yesno)#成交额
+    aaa.write_sheet(12,13,14,t1_dau_pcz,t1_dau_allow,t1_dau_yesno)#DAU
+    aaa.write_sheet(15,16,17,t1_rs_pcz,t1_rs_allow,t1_rs_yesno) #人数
+
+    #2月份
+    aaa.write_sheet(9, 10, 11, t2_cje_pcz, t2_cje_allow, t2_cje_yesno)  # 成交额
+    aaa.write_sheet(12, 13, 14, t2_dau_pcz, t2_dau_allow, t2_dau_yesno)  # DAU
+    aaa.write_sheet(15, 16, 17, t2_rs_pcz, t2_rs_allow, t2_rs_yesno)#人数
+
+    aaa.color_execl('test.xlsx')
+    print('颜色done')
