@@ -1,0 +1,48 @@
+ # 率相关
+        list_target_name = []
+        list_target_id = []
+
+        resheaders = resdata['datas']['headers']
+        for i in resheaders:
+            list_target_name.append(i['target_name'])
+            list_target_id.append(i['target_id'])
+
+        # 取出target_name和target_id，并处理对应
+        dict = {}
+        i = 0
+        length = len(list_target_name)
+        while i < length:
+            dit = {list_target_name[i]: list_target_id[i]}
+            dict.update(dit)
+            i += 1
+        print(dict)
+
+        list1 = []
+        list2 = []
+        list3 = []
+        list4 = []
+        list5 = []
+
+        # print(resheaders[1]['list'])
+        for j in resheaders[1]['list']:
+            list1.append(j['sql'])
+
+        for j in resheaders[2]['list']:
+            list2.append(j['sql'])
+
+        for j in resheaders[3]['list']:
+            list3.append(j['sql'])
+
+        for j in resheaders[6]['list']:
+            list4.append(j['sql'])
+
+        for j in resheaders[7]['list']:
+            list5.append(j['sql'])
+
+        print('留资量-留资线索率、留资面客率、留资付定率', list1)
+        print('线索量-留资线索率、线索面客率、线索付定率', list2)
+        print('面客量-留资面客率、线索面客率、面客成交率 ', list3)
+        print('商城付定-留资付定率、线索付定率、面客成交率 ', list4)
+        print('金融成交-金融付定（金融成交）/商城付定', list5)
+
+        print('--------------------------------------------')
