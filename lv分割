@@ -1,0 +1,83 @@
+import json
+import requests
+from bilogin import login
+import operator
+
+#调用bilogin.py里的login函数
+b=login()
+
+class Lv():
+    def __init__(self):
+        self.stime='2019-04-08'
+        self.etime='2019-04-14'
+
+        self.key_b2c_zhiying='board_b2c_kb016'
+        self.baseurl='http://bi.test.xin.com'
+
+    def lv_b2c_zhiying(self):
+        data={
+            'key':self.key_b2c_zhiying,
+            'stime':self.stime,
+            'etime':self.etime,
+            'token':b[1]
+        }
+        url=self.baseurl+'/api/show/board-merger'
+        resdata=requests.post(url,data=data,cookies=b[0]).json()
+
+        # 率相关
+        list_target_name = []
+        list_target_id = []
+        resheaders = resdata['datas']['headers']
+
+        for i in resheaders:
+            list_target_name.append(i['target_name'])
+            list_target_id.append(i['target_id'])
+
+        # 取出target_name和target_id，并处理对应
+        dict = {}
+        i = 0
+        length = len(list_target_name)
+        while i < length:
+            dit = {list_target_name[i]: list_target_id[i]}
+            dict.update(dit)
+            i += 1
+        print(dict)
+
+        # 把headers里各索引的list取出来汇总，无论list是否为空
+
+        getlist = []
+        for i in resheaders:
+            getlist.append(i['list'])
+        # print(getlist)
+
+        listlvall = []
+        for j in getlist:
+            if j:
+                for k in j:
+                    # print(k['sql'])
+                    listlvall.append(k['sql'])
+
+        # print(listlvall)
+
+        l = [m for m in listlvall]
+        n = 3
+        Lfenge = [l[i:i + n] for i in range(0, len(l), n)]
+        # print(Lfenge[0])
+        # 留资量-留资线索率、留资面客率、留资付定率
+        lv_留资量_需求 = ['%%4610%%/%%4609%%', '%%4611%%/%%4609%%', '%%4614%%/%%4609%%']
+        # 线索量-留资线索率、线索面客率、线索付定率
+        lv_线索量_需求 = ['%%4610%%/%%4609%%', '%%4611%%/%%4610%%', '%%4614%%/%%4610%%']
+
+        if operator.eq(Lfenge[0], lv_留资量_需求):
+            print('留资量-留资线索率、留资面客率、留资付定率ok的')
+        else:
+            print('留资量-留资线索率、留资面客率、留资付定率failed')
+
+        if operator.eq(Lfenge[1], lv_线索量_需求):
+            print('线索量-留资线索率、线索面客率、线索付定率ok')
+        else:
+            print('线索量-留资线索率、线索面客率、线索付定率faile')
+
+if __name__=='__main__':
+    l=Lv()
+    l.lv_b2c_zhiying()
