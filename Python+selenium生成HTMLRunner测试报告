@@ -1,0 +1,36 @@
+from HTMLTestRunner import HTMLTestRunner
+from selenium import webdriver
+import unittest
+import time
+
+class Baidu(unittest.TestCase):
+    '''优化百度搜索测试优化'''
+    def setUp(self):
+        #这里要写上chromedriver.exe浏览器驱动的位置
+        self.driver=webdriver.Chrome('C:\Program Files (x86)\Google\Chrome\Application\chromedriver.exe')
+        self.driver.implicitly_wait(10)
+        self.base_url="http://www.baidu.com"
+
+    def test_baidu(self):
+        '''优化搜索关键字：HTMLTestRunner优化'''
+        driver=self.driver
+        driver.get(self.base_url)
+        driver.find_element_by_id('kw').send_keys('HTMLTestRunner')
+        driver.find_element_by_id('su').click()
+
+    def tearDown(self):
+        self.driver.quit()
+
+if __name__=='__main__':
+    testunit=unittest.TestSuite()
+    testunit.addTest(Baidu('test_baidu'))
+
+    now=time.strftime('%Y-%m-%d %H_%M_%S')
+    filename='./'+now+'result.html'
+
+    #定义报告存放路径
+    fp=open(filename,'wb')
+    #定义测试报告
+    runner=HTMLTestRunner(stream=fp,title='百度搜索测试报告',description='用例测试情况')
+    runner.run(testunit)
+    fp.close()
