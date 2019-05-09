@@ -1,0 +1,20 @@
+import unittest
+from baogao import Baidu
+import time
+import htmltestRunner
+
+testunit = unittest.TestSuite()
+testunit.addTest(Baidu('test_baidu'))
+
+# 获取当前时间，这样便于下面的使用。
+now = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime(time.time()))
+report_title = '接口自动化测试报告'
+desc = u'用于展示修改样式后的HTMlRunner'
+# 打开一个文件，将result写入此file中
+filename = 'D:\\2LianxiScript\\1Python\\report\\fang\\fangfang.html'
+# filename='./'+now+'fangfang2.html'
+
+fp = open(filename, 'wb')
+runner = htmltestRunner.HTMLTestRunner(stream=fp, title='百度搜索测试报告', description='用例测试情况')
+runner.run(testunit)
+fp.close()
