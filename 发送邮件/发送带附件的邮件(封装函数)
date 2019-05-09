@@ -1,0 +1,55 @@
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.header import Header
+
+
+
+def send_mail(username,passwd,recv,title,contnt,mail_host,ports,att):
+    '''
+
+    :param username: 发件人邮箱
+    :param passwd: 发件人授权码
+    :param recv: 收件人邮箱
+    :param title: 邮箱主题
+    :param contnt: 邮箱内容
+    :param mail_host: 邮箱服务器
+    :param ports: 邮箱端口号
+    :param att: 邮箱附件
+    :return:
+    '''
+
+    # 创建一个带附件的实例
+    message = MIMEMultipart()
+    message['From'] = Header('发件人', 'utf-8')
+    message['To'] = Header('收件人', 'utf-8')
+    subject = 'Python SMTP 邮件测试'
+    message['Subject'] = Header(subject, 'utf-8')
+
+    # 邮件正文内容
+    message.attach(MIMEText('这是邮件正文', 'plain', 'utf-8'))
+
+    # 发送当前目录下的 test.txt 文件
+    att = MIMEText(open('test.txt', 'rb').read(), 'base64', 'utf-8')
+    att["Content-Type"] = 'application/octet-stream'
+    # 这里的filename可以任意写，写什么名字，邮件中显示什么名字
+    att["Content-Disposition"] = 'attachment; filename="fang.txt"'
+    message.attach(att)
+
+    email_host = 'smtp.qq.com'
+    sender = '327436168@qq.com'
+    email_pwd = 'xxxx'
+    receivers = ['327436168@qq.com']  # 接收邮件，可设置为你的QQ邮箱或者其他邮箱
+    title = '测试邮件标题'
+    content = '这里是邮件内容'
+    ports = 25
+    att = MIMEText(open('test.txt', 'rb').read(), 'base64', 'utf-8')
+
+    try:
+        smtpObj = smtplib.SMTP(email_host,port=25)
+        smtpObj.login(sender,email_pwd)
+        smtpObj.sendmail(sender, receivers, message.as_string())
+        print('邮件发送成功')
+    except smtplib.SMTPException:
+        print('Error:无法发送')
+
