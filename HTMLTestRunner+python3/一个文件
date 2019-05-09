@@ -1,0 +1,38 @@
+from HTMLTestRunner import HTMLTestRunner
+from selenium import webdriver
+import unittest
+import time
+import htmltestRunner
+
+class Baidu(unittest.TestCase):
+    '''这是百度class的测试'''
+
+    def setUp(self):
+        self.driver=webdriver.Chrome('C:\Program Files (x86)\Google\Chrome\Application\chromedriver.exe')
+        self.driver.implicitly_wait(10)
+        self.base_url="http://www.baidu.com"
+
+    def test_baidu(self):
+        '''这是百度search的测试'''
+        driver=self.driver
+        driver.get(self.base_url)
+        driver.find_element_by_id('kw').send_keys('HTMLTestRunner')
+        driver.find_element_by_id('su').click()
+
+    def tearDown(self):
+        self.driver.quit()
+
+if __name__=='baogao':
+    testunit=unittest.TestSuite()
+    testunit.addTest(Baidu('test_baidu'))
+
+    now=time.strftime('%Y-%m-%d %H_%M_%S')
+    # 存放到指定文件夹中
+    filename="D:\\2LianxiScript\\1Python\\baogao\\resp\\"+now+"result.html"
+
+    #定义报告存放路径
+    fp=open(filename,'wb')
+    #定义测试报告
+    runner=htmltestRunner.HTMLTestRunner(stream=fp,title='百度搜索测试报告',description='用例测试情况')
+    runner.run(testunit)
+    fp.close()
