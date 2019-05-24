@@ -1,0 +1,60 @@
+#周鑫实现，可插入指定行列的值
+
+# -*- coding:utf-8 -*-
+import os
+import xlrd
+import xlwt
+from xlrd import open_workbook
+from xlutils.copy import copy
+
+def w1():
+    list1 = ['22', '33', '44']
+    list2=['-400.000%', '-100.000%', '0.000%']
+    list3=['偏差值大','符合','符合']
+
+    row =1 #是行
+    row2=5
+    row3=1
+    row4=4
+
+    sheetname=xlrd.open_workbook('test.xlsx')
+    sheetname2=copy(sheetname)
+    sheet=sheetname2.get_sheet(2)
+    for i in list1:
+        sheet.write(row, 0, i)#第二个是列
+        row += 1
+    for i in list2:
+        sheet.write(row2, 2, i)
+        row2 += 1
+    for i in list3:
+        sheet.write(3,row3,i) #行，列，插入的内容
+        row3+=1
+        sheet.write(3,row4,i)
+        row4+=1
+    sheetname2.save(r'test.xlsx')
+    print('done')
+
+def w2():
+    list=['偏差值','允许的范围','是否符合']
+    col1=1
+    col2=4
+    col3=7
+
+    sheetname=xlrd.open_workbook('test.xlsx')
+    sheetname2=copy(sheetname)
+    sheet1=sheetname2.get_sheet(2)
+
+    for i in list:
+        sheet1.write(10,col1,i) #行，列，值
+        col1+=1
+        sheet1.write(10,col2,i)
+        col2+=1
+        sheet1.write(10,col3,i)
+        col3+=1
+
+    sheetname2.save(r'test.xlsx')
+    print('表头成功')
+
+if __name__ == '__main__':
+    # w1()
+    w2()
