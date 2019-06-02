@@ -1,0 +1,276 @@
+#1张表n个指标，已完成
+from xlutils.copy import copy
+import xlrd
+import xlwt
+
+class dosheet():
+    def __init__(self,i):
+
+        self.book = xlrd.open_workbook('test的副本.xlsx')
+        self.sheet = self.book.sheet_by_index(0)
+
+        #控制列
+        self.lie = self.sheet.col_values(i)
+
+    #取值范围
+    def fanwei(self,x):
+        if 0 <= x < 10:
+            # return 20
+            return 0.2
+        elif 10 <= x < 50:
+            # return 15
+            return 0.15
+        elif 50 <= x < 100:
+            # return 10
+            return 0.1
+        elif 100 <= x < 10000:
+            # return 5
+            return 0.05
+        elif 10000 >= x:
+            # return 1
+            return 0.01
+
+    #定位列后，做切片操作
+    def qp(self,x,y):
+        T=slice(x,y)
+        return self.lie[T]
+
+    #数据校验：计算偏差值，允许的偏差，是否符合
+    def compare(self,bi,yb):
+        # self.list_pcz = [(((bi[i] - yb[i]) / bi[i])*100) for i in range(0, len(bi))] #对应修改的是取值范围
+        self.list_pcz = [(((bi[i] - yb[i]) / bi[i])) for i in range(0, len(bi))]
+        self.list_allow=[]
+        self.list_result=[]
+
+        for i,val in enumerate(bi):
+            allow=self.fanwei(val)
+            self.list_allow.append(allow)
+
+            if abs(self.list_pcz[i]) <= abs(allow):
+                self.list_result.append("符合")
+            else:
+                self.list_result.append("偏差值大")
+
+        return (self.list_pcz,self.list_allow,self.list_result)
+
+    def color_execl(self,file_name):
+        styleRedBkg = xlwt.easyxf('pattern: pattern solid, fore_colour red;')  # 红色
+        styleGreenBkg = xlwt.easyxf('pattern: pattern solid, fore_colour green;')  # 绿色
+
+        rb = xlrd.open_workbook('test的副本.xlsx')  # 打开t.xls文件
+        ro = rb.sheets()[0]  # 读取表单0
+        print(ro.ncols)
+        wb = copy(rb)  # 利用xlutils.copy下的copy函数复制
+        ws = wb.get_sheet(0)  # 获取表单0
+        # col = 1                                 #指定修改的列
+        for k in range(ro.ncols):
+
+            for i in range(ro.nrows):  # 循环所有的行
+                result = ro.cell(i, k).value
+                if result == "偏差值大":
+                    ws.write(i, k, ro.cell(i, k).value, styleRedBkg)
+                if result =="符合":
+                    ws.write(i, k, ro.cell(i, k).value, styleGreenBkg)
+
+        wb.save(file_name)
+
+    #写入函数指定列填入指定内容
+    #参数含义如（在第11列,第12列,第13列，插入成交额的偏差值，插入成交额的允许范围，插入成交额的是否符合）
+    def write_sheet(self,r1,r2,r3,a1,a2,a3):
+        row1 = 3  # 是行
+        row2 = 3
+        row3 = 3
+
+        sheetname = xlrd.open_workbook('test的副本.xlsx')
+        sheetname2 = copy(sheetname)
+        sheet = sheetname2.get_sheet(1)
+        for i in a1:
+            sheet.write(row1, r1, i)  # 第二个是列
+            row1 += 1
+        for i in a2:
+            sheet.write(row2, r2, i)
+            row2 += 1
+        for i in a3:
+            sheet.write(row3, r3, i)
+            row3 += 1
+
+        sheetname2.save(r'test的副本.xlsx')
+        print('偏差值计算done')
+
+    #插入表头的偏差值、允许的范围和是否符合
+    def inserttou(self):
+        list = ['偏差值', '允许的范围', '是否符合']
+        listzhibiao=['总uv','线索量','到店量','成交量','商城付定','信审通过量','金融成交量','金融渗透率','商城付定占比']
+        col1 = 1
+        col2 = 4
+        col3 = 7
+        col4 = 10
+        col5 = 13
+        col6 = 16
+        col7 = 19
+        col8 = 22
+        col9 = 25
+
+        sheetname = xlrd.open_workbook('test的副本.xlsx')
+        sheetname2 = copy(sheetname)
+        sheet1 = sheetname2.get_sheet(1)
+
+        sheet1.write(1, col1, listzhibiao[0])
+        sheet1.write(1, col2, listzhibiao[1])
+        sheet1.write(1, col3, listzhibiao[2])
+        sheet1.write(1, col4, listzhibiao[3])
+        sheet1.write(1, col5, listzhibiao[4])
+        sheet1.write(1, col6, listzhibiao[5])
+        sheet1.write(1, col7, listzhibiao[6])
+        sheet1.write(1, col8, listzhibiao[7])
+        sheet1.write(1, col9, listzhibiao[8])
+
+
+        for i in list:
+            sheet1.write(2, col1, i)  # 行，列，值
+            col1 += 1
+            sheet1.write(2, col2, i)
+            col2 += 1
+            sheet1.write(2, col3, i)
+            col3 += 1
+            sheet1.write(2, col4, i)
+            col4 +=1
+            sheet1.write(2, col5, i)
+            col5 +=1
+            sheet1.write(2, col6, i)
+            col6 += 1
+
+        sheetname2.save(r'test的副本.xlsx')
+        print('表头成功')
+
+if __name__=='__main__':
+    #这里的i是列，range（10）出来的是0-9，如果i列为9，此处应为9+1=10
+    for i in range(25): #每多一个指标，range里的值也需要+1
+        a =dosheet(i).qp(3,10)#这里是行
+        if a[0]!='':
+            print("i+a在这里：",i,a)
+            if i==1: #成交额的bi数据
+                index1_bi=a
+            # if i==2: #DAU的bi数据
+            #     index2_bi=a
+            # if i==3:  #人数的bi数据
+            #     index3_bi=a
+            # if i==4:#成本的bi数据
+            #     index4_bi=a
+            # if i==5:#佣金 #每多一个指标，i要多一个赋值
+            #     index5_bi=a
+            # if i==6:
+            #     index6_bi=a
+            # if i==7:
+            #     index7_bi=a
+            # if i==8:
+            #     index8_bi=a
+            # if i==9:
+            #     index9_bi=a
+
+
+            if i==11: #成交额的样本数据  #每多加1个指标，样本的第一个i值要多修改一个数，跟着后边的也要做修改
+                index1_yb=a
+            # if i==12: #DAU的样本数据
+            #     index2_yb=a
+            # if i==13: #人数的样本数据
+            #     index3_yb=a
+            # if i==14:#成本的样本数据
+            #     index4_yb=a
+            # if i==15:
+            #     index5_yb=a
+            # if i==16:
+            #     index6_yb=a
+            # if i==17:
+            #     index7_yb=a
+            # if i==18:
+            #     index8_yb=a
+            # if i==19:
+            #     index9_yb=a
+    print(index1_bi)
+    print(index1_yb)
+    index1 =dosheet(i).compare(index1_bi,index1_yb)
+    # print("成交额的偏差值计算：分别是偏差值，允许偏差值，是否符合",cje)
+    # index2 =dosheet(i).compare(index2_bi,index2_yb)
+    # # print("DAU的偏差值计算  ：分别是偏差值，允许偏差值，是否符合",dau)
+    # index3= dosheet(i).compare(index3_bi,index3_yb)
+    # # print("人数的偏差值计算  ：分别是偏差值，允许偏差值，是否符合",rs)
+    # index4 =dosheet(i).compare(index4_bi,index4_yb)
+    # # print("成本的偏差值计算  ：分别是偏差值，允许偏差值，是否符合",cb)
+    # index5 = dosheet(i).compare(index5_bi, index5_yb)
+    # # print("佣金的偏差值计算  ：分别是偏差值，允许偏差值，是否符合", yj)
+    # index6 = dosheet(i).compare(index6_bi, index6_yb)
+    # # print("佣金的偏差值计算  ：分别是偏差值，允许偏差值，是否符合", yj)
+    # index7 = dosheet(i).compare(index7_bi, index7_yb)
+    # index8 = dosheet(i).compare(index8_bi, index8_yb)
+    # index9 = dosheet(i).compare(index9_bi, index9_yb)
+
+
+    # index1_pcz =index1[0]
+    # index1_allow=index1[1]
+    # index1_yesno=index1[2]
+
+    # index2_pcz=index2[0]
+    # index2_allow=index2[1]
+    # index2_yesno=index2[2]
+    #
+    # index3_pcz=index3[0]
+    # index3_allow=index3[1]
+    # index3_yesno=index3[2]
+    #
+    # index4_pcz=index4[0]
+    # index4_allow=index4[1]
+    # index4_yesno=index4[2]
+    #
+    # index5_pcz=index5[0]
+    # index5_allow=index5[1]
+    # index5_yesno=index5[2]
+    #
+    # index6_pcz = index6[0]
+    # index6_allow = index6[1]
+    # index6_yesno = index6[2]
+    #
+    # index7_pcz = index7[0]
+    # index7_allow = index7[1]
+    # index7_yesno = index7[2]
+    #
+    # index8_pcz = index8[0]
+    # index8_allow = index8[1]
+    # index8_yesno = index8[2]
+    #
+    # index9_pcz = index9[0]
+    # index9_allow = index9[1]
+    # index9_yesno = index9[2]
+
+
+    # print("成交额的偏差值",cje_pcz)
+    # print("成交额的允许偏差值",cje_allow)
+    # print("成交额的是否符合",cje_yesno)
+    # print("DAU的偏差值",dau_pcz)
+    # print("DAU的允许范围",dau_allow)
+    # print("DAU的是否符合",dau_yesno)
+    # print("人数的偏差值", rs_pcz)
+    # print("人数的允许范围", rs_allow)
+    # print("人数的是否符合", rs_yesno)
+    # print("成本的偏差值", cb_pcz)
+    # print("成本的允许范围", cb_allow)
+    # print("成本的是否符合", cb_yesno)
+    # print("佣金的偏差值", cb_pcz)
+    # print("佣金的允许范围", cb_allow)
+    # print("佣金的是否符合", cb_yesno)
+
+    aaa=dosheet(5)#数字可随便编写
+
+    # aaa.write_sheet(1,2,3,index1_pcz,index1_allow,index1_yesno)#成交额 #每多加1个指标，往Excel里写的都要相应+1修改
+    # aaa.write_sheet(4,5,6,index2_pcz,index2_allow,index2_yesno)#DAU
+    # aaa.write_sheet(7,8,9,index3_pcz,index3_allow,index3_yesno)#人数
+    # aaa.write_sheet(10,11,12,index4_pcz,index4_allow,index4_yesno)#成本
+    # aaa.write_sheet(13,14,15,index5_pcz,index5_allow,index5_yesno)#佣金
+    # aaa.write_sheet(16,17,18,index6_pcz,index6_allow,index6_yesno)#嘻嘻
+    # aaa.write_sheet(19,20,21,index7_pcz,index7_allow,index7_yesno)#嘻嘻
+    # aaa.write_sheet(22,23,24,index8_pcz,index8_allow,index8_yesno)#嘻嘻
+    # aaa.write_sheet(25,26,27,index8_pcz,index8_allow,index8_yesno)#嘻嘻
+
+    aaa.inserttou()
+    aaa.color_execl('test的副本.xlsx')
+    print('颜色done')
